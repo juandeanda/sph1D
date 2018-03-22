@@ -6,14 +6,14 @@ template<class T, class K>
 class Equations{
 private:
  K kernel;
- double h,alpha,epsilon,dt;
+ double h,alpha,epsilon;
 public:
-  Equations(double h,double alpha, double epsilon,double dt){
+  Equations(double h,double alpha, double epsilon){
     this->h = h;
     this->alpha = alpha;
     this->epsilon = epsilon;
-    this->dt = dt;
   }
+  ~Equations(){}
   double divvk(double vk, double xi, double xk, double vi){
    return (vi-vk)*kernel.dwij(xi,xk,h);
  }
@@ -21,13 +21,13 @@ public:
      int i,j,k;
     double vij,xij,rhom,c;
     for(i=0;i<particle.size();i++){
+       particle[i].c = sqrt(gamma*particle[i].P/particle[i].rho);
        for(k=0;k<particle.size();k++){
          vij=particle[i].vel[0]-particle[k].vel[0];
          xij=particle[i].pos[0]-particle[k].pos[0];
          rhom=0.5*(particle[i].rho+particle[k].rho);
-         c = sqrt(gamma*particle[i].P/particle[i].rho);
        if((vij*xij)<0.0){
-         q[i][k]= -1.0*alpha*h*c*(1/rhom)*((vij*xij)/(pow(xij,2)+(epsilon*pow(h,2))));
+         q[i][k]= -1.0*alpha*h*particle[i].c*(1/rhom)*((vij*xij)/(pow(xij,2)+(epsilon*pow(h,2))));
        }else{
         q[i][k]=0.0;
        }
@@ -35,7 +35,7 @@ public:
     
    }
  }
- void MometumEq(T &particle,double **q){
+ void MometumEq(T &particle,double **q,double dt){
    int i,k,j;
    double sum,aux[particle.size()];
    for(i=0;i<particle.size();i++){
@@ -50,7 +50,7 @@ public:
    }
 
 }
-void Update(T &particle){
+void Update(T &particle,double dt){
   for(int i=0; i<particle.size();i++){
       particle[i].pos[0]=particle[i].pos[0]+particle[i].vel[0]*dt;
   }
@@ -77,7 +77,7 @@ void rhoSPh(T &particle){
        Q[i]=(particle[i].mk/2.0)*sum;
     }
  }
- void CA(double *Q, T &particle){
+ void CA(double *Q, T &particle,double dt){
     int i;
      for(i=0;i<particle.size();i++){
          particle[i].A[0]=particle[i].A[0]*(1.0+((dt*(gamma-1)*particle[i].rho*Q[i])/particle[i].P));
@@ -109,6 +109,17 @@ void rhoSPh(T &particle){
          sum+= particle[k].mk*(particle[k].P/particle[k].rho)*kernel.wij(x,particle[k].pos[0],h);
      }
    return sum;
+ }
+ double dtc(T &particle){
+   double dtc= (0.3*h)/particle[0].c;
+   double newv;
+   for(int i=0;i<particle.size();i++){
+       newv = (0.3*h)/particle[i].c;
+       if(newv<dtc){
+          dtc = newv;
+       }
+   }
+   return dtc;
  }
 };
 #endif
